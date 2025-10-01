@@ -36,9 +36,9 @@ async def read_root():
 async def get_prediction(MaxRain: float, Season_Cool: int, Season_Hot: int, Season_Rainy: int):
 
     # Load model/meta
-    model = load('api/models/best_model.pkl')
-    mapping = load('api/models/mapping.pkl')
-    columns = list(load('api/models/columns.pkl'))
+    model = load('models/best_model.pkl')
+    mapping = load('models/mapping.pkl')
+    columns = list(load('models/columns.pkl'))
 
     feats = {
         "MaxRain": float(MaxRain),
@@ -76,9 +76,9 @@ logger = logging.getLogger(__name__)
 @app.post('/prediction_web', tags=["predictions"])
 async def get_prediction(request: Request, input_data: PredictionInput = Body(...)):
     try:
-        model = load('api/models/best_model.pkl')
-        mapping = load('api/models/mapping.pkl')
-        columns = list(load('api/models/columns.pkl'))
+        model = load('models/best_model.pkl')
+        mapping = load('models/mapping.pkl')
+        columns = list(load('models/columns.pkl'))
 
         payload = input_data.dict()
         feats = {
@@ -191,9 +191,9 @@ async def predict_from_fields(input_data: SimpleInput):
         season = month_region_to_season(input_data.month, region)
         onehot = season_to_onehot(season)
 
-        model = load('api/models/best_model.pkl')
-        mapping = load('api/models/mapping.pkl')
-        columns = list(load('api/models/columns.pkl'))
+        model = load('models/best_model.pkl')
+        mapping = load('models/mapping.pkl')
+        columns = list(load('models/columns.pkl'))
 
         feats = {
             "MaxRain": float(input_data.MaxRain),
