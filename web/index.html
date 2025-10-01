@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Flood Risk Predictor</title>
+<style>
+  :root{
+    --bg:#070a12; --panel:#0b1223ee; --glass:#111a33b3; --border:#6b7cff33; --ring:#7c3aed44;
+    --text:#e6e8ef; --muted:#a3acc7; --primary:#7c3aed; --primary2:#6366f1;
+    --low:#10b981; --med:#f59e0b; --high:#ef4444;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  html,body{margin:0; overflow:hidden}
+  body{
+    color:var(--text);
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+    background:
+      radial-gradient(900px 500px at 80% -10%, #3b82f633 0%, transparent 50%),
+      radial-gradient(700px 400px at -10% -10%, #22d3ee22 0%, transparent 55%),
+      radial-gradient(900px 500px at 20% 110%, #7c3aed22 0%, transparent 55%),
+      linear-gradient(180deg,#070a12,#090e1a 40%,#070a12);
+  }
+  .wrap{max-width:1200px; margin:18px auto; padding:0 18px}
+  .hero{
+    border:1px solid var(--border); border-radius:22px;
+    background: linear-gradient(180deg,var(--panel),#0b1223cc);
+    padding:18px 20px; box-shadow:0 24px 80px rgba(0,0,0,.45);
+    position:relative; overflow:hidden;
+  }
+  .hero::before{
+    content:""; position:absolute; inset:-1px;
+    background: radial-gradient(700px 300px at 85% -15%, #22d3ee26, transparent 60%),
+                radial-gradient(600px 280px at 10% -25%, #7c3aed2a, transparent 65%);
+    pointer-events:none;
+  }
+  .badge{display:inline-flex; gap:8px; align-items:center; padding:6px 10px; border-radius:999px;
+    font-size:12px; color:#c7d2fe; background:#111a33; border:1px solid var(--border)}
+  .title{margin:10px 0 4px 0; font-weight:800; letter-spacing:.2px; font-size:clamp(22px,2.6vw,34px)}
+  .sub{margin:0; color:var(--muted)}
+
+  .content{display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:14px}
+  @media(max-width:980px){ .content{grid-template-columns:1fr} }
+  .card,.side{
+    border:1px solid var(--border); border-radius:18px; background:var(--glass); backdrop-filter: blur(8px);
+    padding:18px; display:flex; flex-direction:column; gap:14px; height:auto;
+  }
+
+  .row{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+  @media(max-width:720px){ .row{grid-template-columns:1fr} }
+  .label{color:var(--muted); font-size:13px; margin-bottom:6px}
+  .btns{display:flex; gap:10px; flex-wrap:wrap}
+  .btn{
+    padding:12px 16px; border:none; border-radius:12px; cursor:pointer; font-weight:800; letter-spacing:.2px; color:white;
+    background:linear-gradient(90deg,var(--primary),var(--primary2));
+    box-shadow:0 14px 30px rgba(124,58,237,.28); transition:.25s transform,.25s box-shadow,.25s opacity;
+  }
+  .btn:hover{ transform:translateY(-1px); box-shadow:0 18px 38px rgba(124,58,237,.36) }
+  .btn-ghost{ padding:12px 16px; border-radius:12px; border:1px solid #314072; background:#0b1328; color:#dbeafe; font-weight:800 }
+  .btn-warn{ padding:12px 16px; border-radius:12px; border:1px solid #3f2e0a; background:#1a1306; color:#fcd34d; font-weight:800 }
+  .loader{display:none; color:#a5b4fc; font-size:14px; align-self:center}
+  .loader::after{content:""; width:16px; height:16px; display:inline-block; margin-left:8px; border-radius:999px; border:2px solid #334155; border-top-color:#a5b4fc; animation:spin 1s linear infinite; vertical-align:-3px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* ---------- Custom Dropdown (เดือน/จังหวัด) ---------- */
+  .cs{position:relative; width:100%}
+  .cs-trigger{
+    width:100%; text-align:left; cursor:pointer; border:none; background:transparent; color:var(--text);
+    padding:12px 44px 12px 14px; font-size:15px; border-radius:12px;
+  }
+  .cs-wrap{
+    border-radius:14px; padding:2px;
+    background:linear-gradient(135deg, rgba(124,58,237,.55), rgba(34,211,238,.45));
+    box-shadow:0 8px 30px rgba(0,0,0,.35);
+    transition:.25s transform,.25s box-shadow;
+  }
+  .cs-inner{
+    border-radius:12px; background:linear-gradient(180deg,#0b1328,#0b142a);
+    border:1.5px solid #23305a; position:relative;
+  }
+  .cs:hover .cs-wrap{ transform:translateY(-1px); box-shadow:0 14px 38px rgba(124,58,237,.28) }
+  .cs-caret{
+    position:absolute; right:10px; top:50%; transform:translateY(-50%);
+    width:26px; height:26px; border-radius:10px; pointer-events:none;
+    background:linear-gradient(180deg,#1b2548,#131b36); border:1px solid #2a3a72;
+    display:grid; place-items:center; box-shadow:inset 0 1px 0 rgba(255,255,255,.06);
+  }
+  .cs-caret::before{content:""; width:7px; height:7px; border-right:2px solid #a5b4fc; border-bottom:2px solid #a5b4fc; transform:rotate(45deg) translateY(-1px)}
+  .cs-panel{
+    position:absolute; z-index:50; left:0; right:0; top:calc(100% + 8px);
+    background:linear-gradient(180deg,#0b1328,#0b152c);
+    border:1px solid #23305a; border-radius:14px; box-shadow:0 24px 60px rgba(0,0,0,.45);
+    padding:8px; max-height:300px; overflow:auto;
+    opacity:0; transform:translateY(-4px); pointer-events:none; transition:.2s opacity,.2s transform;
+  }
+  .cs.open .cs-panel{opacity:1; transform:none; pointer-events:auto}
+  .cs-list{list-style:none; margin:0; padding:0}
+  .cs-item{
+    padding:10px 12px; border-radius:10px; color:#e6e8ef; cursor:pointer;
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .cs-item:hover{ background:#0f1a33 }
+  .cs-item.active{ background:#182447; border:1px solid #2a3a72 }
+  .cs-group{position:sticky; top:0; background:linear-gradient(180deg,#0b1328,#0b152c); color:#9fb1ff; font-weight:800; font-size:12px; padding:6px 8px; border-bottom:1px solid #23305a; z-index:1}
+  .cs-panel::-webkit-scrollbar{width:10px}
+  .cs-panel::-webkit-scrollbar-thumb{background:#26335f; border-radius:10px; border:2px solid #0b1328}
+  .cs-panel::-webkit-scrollbar-track{background:#0b1328; border-radius:10px}
+
+  .field{ border-radius:14px; padding:2px; background:linear-gradient(135deg, rgba(124,58,237,.55), rgba(34,211,238,.45)); box-shadow:0 8px 30px rgba(0,0,0,.35) }
+  .field-inner{ border-radius:12px; background:linear-gradient(180deg,#0b1328,#0b142a); border:1.5px solid #23305a }
+  .input{ width:100%; padding:12px 14px; border:none; border-radius:12px; background:transparent; color:var(--text); outline:none; font-size:15px }
+
+  /* Result */
+  .result{display:none; gap:10px}
+  .risk-wrap{border:1px solid var(--border); border-radius:16px; padding:16px; background:linear-gradient(180deg,#0d1630cc,#0d1630a0)}
+  .risk-top{display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap}
+  .risk-title{margin:0; font-size:18px}
+  .pill{display:inline-flex; gap:8px; align-items:center; padding:6px 10px; border-radius:999px; font-size:12px; font-weight:900; border:1px solid}
+  .pill.low{ color:#a7f3d0; border-color:#10b98166; background:#10b98122 }
+  .pill.med{ color:#fde68a; border-color:#f59e0b66; background:#f59e0b22 }
+  .pill.high{ color:#fecaca; border-color:#ef444466; background:#ef444422 }
+  .meter{margin:12px 0 8px; background:#0b1328; border:1px solid #23305a; border-radius:999px; height:10px; position:relative; overflow:hidden}
+  .gradient{position:absolute; inset:0; background:linear-gradient(90deg,var(--low),var(--med),var(--high))}
+  .thumb{position:absolute; top:-6px; width:3px; height:22px; background:white; border-radius:2px; box-shadow:0 0 0 3px rgba(255,255,255,.18); left:50%; transition:.4s left cubic-bezier(.2,.8,.2,1)}
+  .kv{display:grid; gap:10px; grid-template-columns: repeat(2,1fr)}
+  @media(max-width:720px){ .kv{grid-template-columns:1fr} }
+  .item{border:1px solid #23305a; background:#0b1328; border-radius:12px; padding:10px 12px}
+  .item.big{grid-column:1/-1}
+  .kv .label{font-size:12px; color:#9aa4bf; margin:0 0 6px 0}
+  .kv .value{font-size:16px; font-weight:800}
+
+  footer{margin:10px 0 16px 0; text-align:center; color:#a3acc7; font-size:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <section class="hero">
+    <span class="badge">🌧️ Flood Risk Predictor</span>
+    <h1 class="title">ทำนายความเสี่ยงน้ำท่วม</h1>
+    <p class="sub">เลือก <b>เดือน</b>, <b>จังหวัด</b> และกรอก <b>ปริมาณฝนสูงสุด (มม.)</b> ระบบจะแสดง <b>ระดับความเสี่ยง</b>, <b>ภาค</b>, และ <b>ฤดู</b> เป็นภาษาไทย</p>
+  </section>
+
+  <div class="content">
+    <div class="card">
+      <form id="form" style="display:flex; flex-direction:column; gap:12px">
+        <div class="row">
+          <div>
+            <div class="label">เดือน</div>
+            <!-- custom select month -->
+            <div class="cs" id="cs-month">
+              <div class="cs-wrap">
+                <div class="cs-inner">
+                  <button class="cs-trigger" type="button" aria-haspopup="listbox" aria-expanded="false">เลือกเดือน</button>
+                  <div class="cs-caret"></div>
+                </div>
+              </div>
+              <div class="cs-panel"></div>
+            </div>
+            <select id="month" style="display:none"></select>
+          </div>
+
+          <div>
+            <div class="label">จังหวัด</div>
+            <!-- custom select province -->
+            <div class="cs" id="cs-province">
+              <div class="cs-wrap">
+                <div class="cs-inner">
+                  <button class="cs-trigger" type="button" aria-haspopup="listbox" aria-expanded="false">เลือกจังหวัด</button>
+                  <div class="cs-caret"></div>
+                </div>
+              </div>
+              <div class="cs-panel"></div>
+            </div>
+            <select id="province" style="display:none"></select>
+          </div>
+        </div>
+
+        <div>
+          <div class="label">ปริมาณฝนสูงสุดของเดือน (มิลลิเมตร)</div>
+          <div class="field"><div class="field-inner">
+            <input id="maxrain" class="input" type="number" min="0" step="0.01" placeholder="เช่น 250.5" required/>
+          </div></div>
+        </div>
+
+        <div class="btns">
+          <button id="submitBtn" type="submit" class="btn">ทำนายความเสี่ยง</button>
+          <button id="sampleBtn" type="button" class="btn-ghost">ใส่ตัวอย่าง</button>
+          <button id="resetBtn" type="button" class="btn-warn">รีเซตข้อมูล</button>
+          <div id="loader" class="loader">กำลังประมวลผล…</div>
+        </div>
+      </form>
+
+      <!-- ผลการทำนาย -->
+      <div id="result" class="result">
+        <div class="risk-wrap">
+          <div class="risk-top">
+            <h3 class="risk-title">ผลการทำนาย</h3>
+            <span id="riskBadge" class="pill">—</span>
+          </div>
+          <div class="meter"><div class="gradient"></div><div id="thumb" class="thumb"></div></div>
+          <div class="kv">
+            <div class="item big">
+              <p class="label">ระดับความเสี่ยง</p>
+              <div id="riskText" class="value">—</div>
+            </div>
+            <div class="item">
+              <p class="label">เดือน</p>
+              <div id="monthText" class="value">—</div>
+            </div>
+            <div class="item">
+              <p class="label">จังหวัด</p>
+              <div id="provinceText" class="value">—</div>
+            </div>
+            <div class="item">
+              <p class="label">ภาค</p>
+              <div id="regionText" class="value">—</div>
+            </div>
+            <div class="item">
+              <p class="label">ฤดู</p>
+              <div id="seasonText" class="value">—</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="side">
+      <h3 style="margin:0">🧭 วิธีใช้งาน</h3>
+      <p style="margin:0; color:var(--muted)">เลือกเดือนและจังหวัด กรอกปริมาณฝนสูงสุด แล้วกด “ทำนายความเสี่ยง”</p>
+    </div>
+  </div>
+
+  <footer>API: http://127.0.0.1:5000/predict_from_fields · พร้อมใช้งานจริง</footer>
+</div>
+
+<script>
+/* ---------- ข้อมูล ---------- */
+const MONTH_TH=["","มกราคม","กุมภาพันธ์","มีนาคม","เมษายน","พฤษภาคม","มิถุนายน","กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤศจิกายน","ธันวาคม"];
+const PROVINCES={
+  "ภาคเหนือ":["เชียงใหม่","เชียงราย","ลำพูน","ลำปาง","แพร่","น่าน","พะเยา","แม่ฮ่องสอน","ตาก","อุตรดิตถ์","พิษณุโลก","สุโขทัย","กำแพงเพชร","พิจิตร","เพชรบูรณ์","นครสวรรค์","อุทัยธานี"],
+  "ภาคตะวันออกเฉียงเหนือ":["ขอนแก่น","อุดรธานี","อุบลราชธานี","นครราชสีมา","บุรีรัมย์","สุรินทร์","ศรีสะเกษ","ร้อยเอ็ด","ยโสธร","มหาสารคาม","กาฬสินธุ์","สกลนคร","นครพนม","หนองคาย","เลย","หนองบัวลำภู","บึงกาฬ","มุกดาหาร","ชัยภูมิ","อำนาจเจริญ"],
+  "ภาคกลาง":["กรุงเทพมหานคร","นนทบุรี","ปทุมธานี","พระนครศรีอยุธยา","สระบุรี","ลพบุรี","อ่างทอง","สิงห์บุรี","ชัยนาท","สุพรรณบุรี","นครปฐม","สมุทรสาคร","สมุทรปราการ","สมุทรสงคราม","นครนายก"],
+  "ภาคตะวันออก":["ชลบุรี","ระยอง","จันทบุรี","ตราด","ฉะเชิงเทรา","ปราจีนบุรี","สระแก้ว"],
+  "ภาคตะวันตก":["กาญจนบุรี","ราชบุรี","เพชรบุรี","ประจวบคีรีขันธ์"],
+  "ใต้ฝั่งอันดามัน":["ระนอง","พังงา","ภูเก็ต","กระบี่","ตรัง","สตูล"],
+  "ใต้ฝั่งอ่าวไทย":["ชุมพร","สุราษฎร์ธานี","นครศรีธรรมราช","พัทลุง","สงขลา","ปัตตานี","ยะลา","นราธิวาส"]
+};
+const REGION_TH={
+  North:"ภาคเหนือ", Northeast:"ภาคตะวันออกเฉียงเหนือ", Central:"ภาคกลาง",
+  East:"ภาคตะวันออก", West:"ภาคตะวันตก", South_Andaman:"ภาคใต้ (ฝั่งอันดามัน)", South_Gulf:"ภาคใต้ (ฝั่งอ่าวไทย)"
+};
+const SEASON_TH={ Cool:"ฤดูหนาว", Hot:"ฤดูร้อน", Rainy:"ฤดูฝน" };
+
+/* ---------- Custom Select: เดือน (แสดงเฉพาะชื่อเดือน) ---------- */
+function buildMonthCustom(){
+  const cs=document.getElementById('cs-month');
+  const trigger=cs.querySelector('.cs-trigger');
+  const panel=cs.querySelector('.cs-panel');
+  const hidden=document.getElementById('month');
+
+  // hidden select (เผื่อโค้ดอื่นใช้ค่า)
+  for(let i=1;i<=12;i++){ const o=document.createElement('option'); o.value=i; o.textContent=MONTH_TH[i]; hidden.appendChild(o); }
+
+  const ul=document.createElement('ul'); ul.className='cs-list';
+  for(let i=1;i<=12;i++){
+    const li=document.createElement('li'); li.className='cs-item'; li.dataset.value=i;
+    li.textContent=MONTH_TH[i];
+    li.addEventListener('click',()=>{ setValue(i); close(); });
+    ul.appendChild(li);
+  }
+  panel.appendChild(ul);
+
+  function open(){ cs.classList.add('open'); trigger.setAttribute('aria-expanded','true'); }
+  function close(){ cs.classList.remove('open'); trigger.setAttribute('aria-expanded','false'); }
+  function setValue(v){
+    hidden.value=v; trigger.textContent=MONTH_TH[v];
+    ul.querySelectorAll('.cs-item').forEach(x=>x.classList.toggle('active', x.dataset.value==v));
+  }
+  trigger.addEventListener('click', (e)=>{ e.stopPropagation(); cs.classList.contains('open')?close():open(); });
+  document.addEventListener('click', close);
+  return { setValue };
+}
+
+/* ---------- Custom Select: จังหวัด ---------- */
+function buildProvinceCustom(){
+  const cs=document.getElementById('cs-province');
+  const trigger=cs.querySelector('.cs-trigger');
+  const panel=cs.querySelector('.cs-panel');
+  const hidden=document.getElementById('province');
+
+  Object.entries(PROVINCES).forEach(([grp,items])=>{
+    const og=document.createElement('optgroup'); og.label=grp;
+    items.forEach(p=>{ const o=document.createElement('option'); o.value=p; o.textContent=p; og.appendChild(o); });
+    hidden.appendChild(og);
+  });
+
+  const ul=document.createElement('ul'); ul.className='cs-list';
+  Object.entries(PROVINCES).forEach(([grp,items])=>{
+    const g=document.createElement('li'); g.className='cs-group'; g.textContent=grp; ul.appendChild(g);
+    items.forEach(p=>{
+      const li=document.createElement('li'); li.className='cs-item'; li.dataset.value=p; li.textContent=p;
+      li.addEventListener('click', ()=>{ setValue(p); close(); });
+      ul.appendChild(li);
+    });
+  });
+  panel.appendChild(ul);
+
+  function open(){ cs.classList.add('open'); trigger.setAttribute('aria-expanded','true'); }
+  function close(){ cs.classList.remove('open'); trigger.setAttribute('aria-expanded','false'); }
+  function setValue(v){
+    hidden.value=v; trigger.textContent=v;
+    ul.querySelectorAll('.cs-item').forEach(x=>x.classList.toggle('active', x.dataset.value==v));
+  }
+  trigger.addEventListener('click', (e)=>{ e.stopPropagation(); cs.classList.contains('open')?close():open(); });
+  document.addEventListener('click', close);
+  return { setValue };
+}
+
+const csMonth = buildMonthCustom();
+const csProv  = buildProvinceCustom();
+
+/* ---------- DOM ที่ใช้ต่อ ---------- */
+const monthSel   = document.getElementById('month');
+const provSel    = document.getElementById('province');
+const maxrainInp = document.getElementById('maxrain');
+const submitBtn  = document.getElementById('submitBtn');
+const sampleBtn  = document.getElementById('sampleBtn');
+const resetBtn   = document.getElementById('resetBtn');
+const loader     = document.getElementById('loader');
+const resultWrap = document.getElementById('result');
+const riskBadge  = document.getElementById('riskBadge');
+const thumb      = document.getElementById('thumb');
+const riskText   = document.getElementById('riskText');
+const monthText  = document.getElementById('monthText');
+const provinceText = document.getElementById('provinceText');
+const regionText = document.getElementById('regionText');
+const seasonText = document.getElementById('seasonText');
+
+/* ---------- คำนวณฤดูให้ “ตรงตามกฎที่ให้มา” ---------- */
+function computeSeason(regionCode, month){
+  const MAIN = new Set(['North','Northeast','Central','East','West']);
+  if (MAIN.has(regionCode)){
+    if ([3,4,5].includes(month)) return 'Hot';
+    if ([11,12,1,2].includes(month)) return 'Cool';
+    if ([6,7,8,9,10].includes(month)) return 'Rainy';
+    return 'Rainy';
+  }
+  if (regionCode==='South_Andaman'){
+    if ([3,4,11,12,1,2].includes(month)) return 'Hot';
+    if ([5,6,7,8,9,10].includes(month)) return 'Rainy';
+    return 'Rainy';
+  }
+  if (regionCode==='South_Gulf'){
+    if ([9,10,11].includes(month)) return 'Rainy';
+    if ([3,4,5,6,7,8,12,1,2].includes(month)) return 'Hot';
+    return 'Hot';
+  }
+  return 'Rainy';
+}
+
+/* ---------- เสี่ยงต่ำ/กลาง/สูง ---------- */
+function riskFromPrediction(pred,id){
+  const s=(pred||'').toString().toLowerCase();
+  if(s.includes('high')) return {th:'เสี่ยงสูง', cls:'high', pos:96};
+  if(s.includes('medium')) return {th:'เสี่ยงปานกลาง', cls:'med', pos:50};
+  if(s.includes('low')) return {th:'เสี่ยงต่ำ', cls:'low', pos:8};
+  if(Number(id)===2) return {th:'เสี่ยงสูง', cls:'high', pos:96};
+  if(Number(id)===1) return {th:'เสี่ยงปานกลาง', cls:'med', pos:50};
+  return {th:'เสี่ยงต่ำ', cls:'low', pos:8};
+}
+function paintRisk(r){ riskBadge.className='pill '+r.cls; riskBadge.textContent=r.th; thumb.style.left=r.pos+'%'; }
+
+/* ---------- ปุ่มช่วย ---------- */
+sampleBtn.addEventListener('click', ()=>{ csMonth.setValue(5); csProv.setValue('นครศรีธรรมราช'); maxrainInp.value=300; });
+resetBtn.addEventListener('click', ()=>{
+  document.getElementById('cs-month').querySelector('.cs-trigger').textContent='เลือกเดือน'; monthSel.value='';
+  document.getElementById('cs-province').querySelector('.cs-trigger').textContent='เลือกจังหวัด'; provSel.value='';
+  maxrainInp.value=''; resultWrap.style.display='none';
+  riskBadge.className='pill'; riskBadge.textContent='—'; thumb.style.left='50%';
+});
+
+/* ---------- Submit ---------- */
+document.getElementById('form').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  submitBtn.disabled=true; loader.style.display='inline-block'; resultWrap.style.display='none';
+  try{
+    const month=parseInt(monthSel.value,10);
+    const province=(provSel.value||'').trim();
+    const MaxRain=parseFloat(maxrainInp.value);
+    if(!month || !province || isNaN(MaxRain) || MaxRain<0) throw new Error('กรุณากรอกข้อมูลให้ครบถ้วนและถูกต้อง');
+
+    // === DEBUG: ดูว่าเราส่งอะไรเข้า API ===
+    console.log('Body JSON:', JSON.stringify({ month, province, MaxRain }));
+
+
+
+    const resp=await fetch('http://127.0.0.1:5000/predict_from_fields',{
+      method:'POST', headers:{'Content-Type':'application/json','Accept':'application/json'},
+      body: JSON.stringify({ month, province, MaxRain })
+    });
+    const data=await resp.json();
+    if(!resp.ok) throw new Error(data?.detail || 'Prediction failed');
+
+    const risk=riskFromPrediction(data.prediction, data.label_id);
+    paintRisk(risk);
+
+    // แสดงผล: เดือนแสดงเฉพาะชื่อ, ฤดูคำนวณตามกฎที่กำหนด
+    const regionCode = data.inputs?.region;
+    const seasonCode = computeSeason(regionCode, month);
+
+    riskText.textContent = risk.th;
+    monthText.textContent = MONTH_TH[month];
+    provinceText.textContent = province;
+    regionText.textContent = REGION_TH[regionCode] ?? '—';
+    seasonText.textContent = SEASON_TH[seasonCode] ?? '—';
+
+    resultWrap.style.display='grid';
+  }catch(err){ alert(err.message||String(err)); }
+  finally{ loader.style.display='none'; submitBtn.disabled=false; }
+});
+</script>
+</body>
+</html>
