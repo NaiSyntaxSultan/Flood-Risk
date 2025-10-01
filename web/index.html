@@ -395,7 +395,7 @@ document.getElementById('form').addEventListener('submit', async (e)=>{
 
 
 
-    const resp=await fetch('http://127.0.0.1:5000/predict_from_fields',{
+    const resp=await fetch('https://flood-risk-zszy.onrender.com/predict_from_fields',{
       method:'POST', headers:{'Content-Type':'application/json','Accept':'application/json'},
       body: JSON.stringify({ month, province, MaxRain })
     });
