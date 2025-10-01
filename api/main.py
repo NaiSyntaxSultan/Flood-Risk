@@ -6,6 +6,13 @@ from pydantic import BaseModel
 import logging
 import pandas as pd
 
+from pathlib import Path
+BASE_DIR = Path(__file__).resolve().parent
+MODELS_DIR = BASE_DIR / "models"
+BEST_MODEL_PATH = MODELS_DIR / "best_model.pkl"
+MAPPING_PATH    = MODELS_DIR / "mapping.pkl"
+COLUMNS_PATH    = MODELS_DIR / "columns.pkl"
+
 app = FastAPI(
     title="Flood Risk Prediction API",
     description="API for predicting flood risk (Low/Medium/High) from MaxRain and Season",
@@ -36,9 +43,9 @@ async def read_root():
 async def get_prediction(MaxRain: float, Season_Cool: int, Season_Hot: int, Season_Rainy: int):
 
     # Load model/meta
-    model = load('models/best_model.pkl')
-    mapping = load('models/mapping.pkl')
-    columns = list(load('models/columns.pkl'))
+    model = load(BEST_MODEL_PATH)
+    mapping = load(MAPPING_PATH)
+    columns = list(load(COLUMNS_PATH))
 
     feats = {
         "MaxRain": float(MaxRain),
@@ -76,9 +83,9 @@ logger = logging.getLogger(__name__)
 @app.post('/prediction_web', tags=["predictions"])
 async def get_prediction(request: Request, input_data: PredictionInput = Body(...)):
     try:
-        model = load('models/best_model.pkl')
-        mapping = load('models/mapping.pkl')
-        columns = list(load('models/columns.pkl'))
+        model = load(BEST_MODEL_PATH)
+        mapping = load(MAPPING_PATH)
+        columns = list(load(COLUMNS_PATH))
 
         payload = input_data.dict()
         feats = {
@@ -191,9 +198,9 @@ async def predict_from_fields(input_data: SimpleInput):
         season = month_region_to_season(input_data.month, region)
         onehot = season_to_onehot(season)
 
-        model = load('models/best_model.pkl')
-        mapping = load('models/mapping.pkl')
-        columns = list(load('models/columns.pkl'))
+        model = load(BEST_MODEL_PATH)
+        mapping = load(MAPPING_PATH)
+        columns = list(load(COLUMNS_PATH))
 
         feats = {
             "MaxRain": float(input_data.MaxRain),
