@@ -164,14 +164,14 @@ def month_region_to_season(month: int, region: str) -> str:
 
     # South Andaman (ไม่มี Cool)
     if region == "South_Andaman":
-        if month in {3,4}:
+        if month in {1,2,3,4,11,12}:
             return "Hot"
         else:
             return "Rainy"
 
     # South Gulf (ไม่มี Cool)
     if region == "South_Gulf":
-        if month in {4,5}:
+        if month in {3,4,5,6,7,8,12,1,2}:
             return "Hot"
         else:
             return "Rainy"
